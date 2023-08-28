@@ -1,0 +1,116 @@
+version: '3.7'
+
+services:
+  #eureka-server
+  eureka-server:
+    image: ahmedbaz/eureka-server:1.0.0
+    restart: always
+    ports:
+      - '8761:8761'
+    networks:
+      - currency-network
+  #zipkin
+  zipkin:
+    depends_on:
+      - rabbitmq
+    image: openzipkin/zipkin:2.23
+    restart: always
+    ports:
+      - '9411:9411'
+    networks:
+      - currency-network
+  #rabbitmq
+  rabbitmq:
+    image: rabbitmq:3.5.3-management
+    restart: always
+    ports:
+      - '5672:5672'
+      - '15672:15672'
+    environment:
+      RABBIT_URI: amqp://guest:guest@rabbitmq:5672
+    networks:
+      - currency-network
+  #gateway-server
+  api-gateway:
+    depends_on:
+      - eureka-server
+      - rabbitmq
+    image: ahmedbaz/api-gateway:1.0.0
+    restart: always
+    ports:
+      - '8765:8765'
+    environment:
+      EUREKA.CLIENT.SERVICEURL.DEFAULTZONE: http://eureka-server:8761/eureka
+      SPRING.ZIPKIN.BASE-URL: http://zipkin:9411/
+      RABBIT_URI: amqp://guest:guest@rabbitmq:5672
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_ZIPKIN_SENDER_TYPE: RABBIT
+    networks:
+      - currency-network
+  #redis
+  redis:
+    image: redis:alpine3.17
+    restart: always
+    ports:
+      - '6379:6379'
+    networks:
+      - currency-network
+  #currency-exchange-service
+  currency-exchange-service:
+    depends_on:
+      - redis
+      - eureka-server
+      - rabbitmq
+    image: ahmedbaz/currency-exchange-service:1.0.0
+    restart: always
+    ports:
+      - '8000:8000'
+    environment:
+      EUREKA.CLIENT.SERVICEURL.DEFAULTZONE: http://eureka-server:8761/eureka
+      SPRING.REDIS.HOST: redis
+      SPRING.REDIS.port: 6379
+      SPRING.ZIPKIN.BASE-URL: http://zipkin:9411/
+      RABBIT_URI: amqp://guest:guest@rabbitmq:5672
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_ZIPKIN_SENDER_TYPE: RABBIT
+
+    networks:
+      - currency-network
+  #currency-conversion-service
+  currency-conversion-service:
+    depends_on:
+      - eureka-server
+      - rabbitmq
+    image: ahmedbaz/currency-conversion-service:1.0.0
+    restart: always
+    ports:
+      - '8100:8100'
+    environment:
+      EUREKA.CLIENT.SERVICEURL.DEFAULTZONE: http://eureka-server:8761/eureka
+      SPRING.ZIPKIN.BASE-URL: http://zipkin:9411/
+      RABBIT_URI: amqp://guest:guest@rabbitmq:5672
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_ZIPKIN_SENDER_TYPE: RABBIT
+    networks:
+      - currency-network
+  #mail-service
+  mail-service:
+    depends_on:
+      - eureka-server
+      - rabbitmq
+    image: ahmedbaz/mail-service:1.0.0
+    restart: always
+    ports:
+      - '9999:9999'
+    environment:
+      EUREKA.CLIENT.SERVICEURL.DEFAULTZONE: http://eureka-server:8761/eureka
+      SPRING.ZIPKIN.BASE-URL: http://zipkin:9411/
+      RABBIT_URI: amqp://guest:guest@rabbitmq:5672
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_ZIPKIN_SENDER_TYPE: RABBIT
+    networks:
+      - currency-network
+
+networks:
+  currency-network:
+
