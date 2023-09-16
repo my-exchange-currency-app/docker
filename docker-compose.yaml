@@ -3,12 +3,24 @@ version: '3.7'
 services:
   #eureka-server
   eureka-server:
-    image: ahmedbaz/eureka-server:1.0.0
+    image: ahmedbaz/currency-app/eureka-server:1.1.0
     restart: always
     ports:
       - '8761:8761'
     networks:
       - currency-network
+  #config-server
+  config-server:
+    depends_on:
+      - eureka-server
+    image: ahmedbaz/currency-app/config-server:1.1.0
+    restart: always
+    ports:
+      - '8888:8888'
+    environment:
+        SPRING.BOOT.ADMIN.CLIENT.URL: http://admin-server:9090
+    networks:
+      - currency-network    
   #zipkin
   zipkin:
     image: openzipkin/zipkin:2.23
@@ -21,13 +33,14 @@ services:
   api-gateway:
     depends_on:
       - eureka-server
-    image: ahmedbaz/api-gateway:1.0.0
+    image: ahmedbaz/currency-app/api-gateway:1.1.0
     restart: always
     ports:
       - '8765:8765'
     environment:
       EUREKA.CLIENT.SERVICEURL.DEFAULTZONE: http://eureka-server:8761/eureka
       SPRING.ZIPKIN.BASE-URL: http://zipkin:9411/
+      SPRING.BOOT.ADMIN.CLIENT.URL: http://admin-server:9090
     networks:
       - currency-network
   #redis
@@ -43,7 +56,7 @@ services:
     depends_on:
       - redis
       - eureka-server
-    image: ahmedbaz/currency-exchange-service:1.0.0
+    image: ahmedbaz/currency-app/currency-exchange-service:1.1.0
     restart: always
     ports:
       - '8000:8000'
@@ -52,20 +65,31 @@ services:
       SPRING.REDIS.HOST: redis
       SPRING.REDIS.port: 6379
       SPRING.ZIPKIN.BASE-URL: http://zipkin:9411/
-
+      SPRING.BOOT.ADMIN.CLIENT.URL: http://admin-server:9090
     networks:
       - currency-network
   #currency-conversion-service
   currency-conversion-service:
     depends_on:
       - eureka-server
-    image: ahmedbaz/currency-conversion-service:1.0.0
+      - config-server
+    image: ahmedbaz/currency-app/currency-conversion-service:1.1.0
     restart: always
     ports:
       - '8100:8100'
     environment:
       EUREKA.CLIENT.SERVICEURL.DEFAULTZONE: http://eureka-server:8761/eureka
       SPRING.ZIPKIN.BASE-URL: http://zipkin:9411/
+      SPRING.BOOT.ADMIN.CLIENT.URL: http://admin-server:9090
+    networks:
+      - currency-network
+  #admin-server
+  admin-server:
+    depends_on:
+      - eureka-server
+    image: ahmedbaz/currency-app/admin-server:1.1.0
+    ports:
+      - '9090:9090'
     networks:
       - currency-network
   #mail-service
