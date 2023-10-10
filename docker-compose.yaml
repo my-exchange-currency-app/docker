@@ -33,6 +33,7 @@ services:
   api-gateway:
     depends_on:
       - eureka-server
+      - admin-server
     image: ahmedbaz/api-gateway:1.2.0
     restart: always
     ports:
@@ -56,6 +57,7 @@ services:
     depends_on:
       - redis
       - eureka-server
+      - admin-server
     image: ahmedbaz/currency-exchange-service:1.2.0
     restart: always
     ports:
@@ -73,6 +75,7 @@ services:
     depends_on:
       - eureka-server
       - config-server
+      - admin-server
     image: ahmedbaz/currency-conversion-service:1.2.0
     restart: always
     ports:
@@ -90,19 +93,8 @@ services:
     image: ahmedbaz/admin-server:1.2.0
     ports:
       - '9090:9090'
-    networks:
-      - currency-network
-  #mail-service
-  mail-service:
-    depends_on:
-      - eureka-server
-    image: ahmedbaz/mail-service:1.0.0
-    restart: always
-    ports:
-      - '9999:9999'
     environment:
       EUREKA.CLIENT.SERVICEURL.DEFAULTZONE: http://eureka-server:8761/eureka
-      SPRING.ZIPKIN.BASE-URL: http://zipkin:9411/
     networks:
       - currency-network
 
